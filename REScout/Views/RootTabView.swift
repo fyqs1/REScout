@@ -42,14 +42,14 @@ struct RootTabView: View {
         }
         .id(settings.localizationEpoch)
         .onAppear {
-            deviceStore.setAutoRefreshEnabled(settings.autoRefreshOverview)
+            deviceStore.setAutoRefresh(interval: settings.overviewRefreshInterval.timeInterval)
             deviceStore.setOverviewVisible(selectedTab == .overview)
         }
         .onChange(of: selectedTab) { tab in
             deviceStore.setOverviewVisible(tab == .overview)
         }
-        .onChange(of: settings.autoRefreshOverview) { enabled in
-            deviceStore.setAutoRefreshEnabled(enabled)
+        .onChange(of: settings.overviewRefreshInterval) { interval in
+            deviceStore.setAutoRefresh(interval: interval.timeInterval)
         }
     }
 

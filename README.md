@@ -22,6 +22,7 @@ Does **not** decrypt App Store binaries or perform memory dumps.
 ## Build
 
 ```bash
+cd /Users/tm/zibo_project/workflow/app_test/cpu_dasher/REScout
 ./scripts/package_ipa.sh
 # → REScout.ipa
 ```

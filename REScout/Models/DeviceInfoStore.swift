@@ -13,10 +13,8 @@ final class DeviceInfoStore: ObservableObject {
     private var pauseDepth = 0
     private var refreshGeneration = 0
     private var autoRefreshEnabled = false
-
-    /// Only used when Settings → Auto Refresh is on.
-    private let lightInterval: TimeInterval = 30.0
-    private let heavyEveryNTicks = 4 // ~2 minutes
+    private var lightInterval: TimeInterval = 30.0
+    private var heavyEveryNTicks = 4
 
     private var shouldPoll: Bool {
         sceneActive && overviewVisible && pauseDepth == 0 && autoRefreshEnabled
@@ -34,8 +32,15 @@ final class DeviceInfoStore: ObservableObject {
         invalidateTimer()
     }
 
-    func setAutoRefreshEnabled(_ enabled: Bool) {
-        autoRefreshEnabled = enabled
+    func setAutoRefresh(interval: TimeInterval?) {
+        let seconds = interval ?? 30
+        let intervalChanged = abs(lightInterval - seconds) > 0.01
+        autoRefreshEnabled = interval != nil
+        lightInterval = seconds
+        heavyEveryNTicks = max(4, Int((120.0 / max(seconds, 1)).rounded()))
+        if intervalChanged {
+            invalidateTimer()
+        }
         syncTimer()
     }
 

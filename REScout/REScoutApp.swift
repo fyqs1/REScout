@@ -11,7 +11,10 @@ struct REScoutApp: App {
             RootTabView()
                 .environmentObject(store)
                 .environmentObject(settings)
-                .onAppear { store.start() }
+                .onAppear {
+                    store.start()
+                    ProxyVPNManager.startObserving()
+                }
                 .onChange(of: scenePhase) { phase in
                     store.setSceneActive(phase == .active)
                 }

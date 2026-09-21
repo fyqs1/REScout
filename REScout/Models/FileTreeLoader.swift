@@ -6,6 +6,7 @@ struct FileNode: Identifiable, Hashable {
     let path: String
     let isDirectory: Bool
     let fileSize: UInt64?
+    let modificationDate: Date?
     let isHidden: Bool
 }
 
@@ -13,6 +14,75 @@ enum FileListOutcome {
     case listed([FileNode])
     case unreadable(String)
     case missing
+}
+
+/// Sort within directory/file groups. Directories always stay above files.
+enum FileSortMode: String, CaseIterable, Identifiable {
+    case nameAsc
+    case nameDesc
+    case dateNewest
+    case dateOldest
+    case sizeLargest
+    case sizeSmallest
+
+    var id: String { rawValue }
+
+    var titleKey: String {
+        switch self {
+        case .nameAsc: return "File Sort Name Asc"
+        case .nameDesc: return "File Sort Name Desc"
+        case .dateNewest: return "File Sort Date Newest"
+        case .dateOldest: return "File Sort Date Oldest"
+        case .sizeLargest: return "File Sort Size Largest"
+        case .sizeSmallest: return "File Sort Size Smallest"
+        }
+    }
+
+    private static let storageKey = "rescout.fileSortMode"
+
+    static var stored: FileSortMode {
+        get {
+            let raw = UserDefaults.standard.string(forKey: storageKey) ?? FileSortMode.nameAsc.rawValue
+            return FileSortMode(rawValue: raw) ?? .nameAsc
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: storageKey)
+        }
+    }
+
+    static func sort(_ nodes: inout [FileNode], mode: FileSortMode) {
+        nodes.sort { a, b in
+            if a.isDirectory != b.isDirectory {
+                return a.isDirectory && !b.isDirectory
+            }
+            switch mode {
+            case .nameAsc:
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            case .nameDesc:
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedDescending
+            case .dateNewest:
+                let da = a.modificationDate ?? .distantPast
+                let db = b.modificationDate ?? .distantPast
+                if da != db { return da > db }
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            case .dateOldest:
+                let da = a.modificationDate ?? .distantFuture
+                let db = b.modificationDate ?? .distantFuture
+                if da != db { return da < db }
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            case .sizeLargest:
+                let sa = a.isDirectory ? 0 : (a.fileSize ?? 0)
+                let sb = b.isDirectory ? 0 : (b.fileSize ?? 0)
+                if sa != sb { return sa > sb }
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            case .sizeSmallest:
+                let sa = a.isDirectory ? 0 : (a.fileSize ?? 0)
+                let sb = b.isDirectory ? 0 : (b.fileSize ?? 0)
+                if sa != sb { return sa < sb }
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
+        }
+    }
 }
 
 enum FileTreeLoader {
@@ -23,8 +93,61 @@ enum FileTreeLoader {
         "pem", "crt", "key", "gitignore", "editorconfig", "toml"
     ]
 
+    static let packageExtensions: Set<String> = [
+        "ipa", "tipa", "deb", "zip", "tar", "gz", "tgz", "xz", "bz2", "7z", "dylib"
+    ]
+
     static let maxPreviewBytes: UInt64 = 2 * 1024 * 1024
     static let ioQueue = DispatchQueue(label: "com.fyqs.REScout.fileio", qos: .userInitiated)
+
+    static func pathExtension(of path: String) -> String {
+        (path as NSString).pathExtension.lowercased()
+    }
+
+    static func isPackageFile(_ path: String) -> Bool {
+        packageExtensions.contains(pathExtension(of: path))
+    }
+
+    static func typeIdentifier(for path: String) -> String {
+        switch pathExtension(of: path) {
+        case "ipa", "tipa":
+            return "com.apple.itunes.ipa"
+        case "deb":
+            return "org.debian.deb-archive"
+        case "zip":
+            return "public.zip-archive"
+        case "dylib":
+            return "public.data"
+        default:
+            return "public.data"
+        }
+    }
+
+    static func systemImage(for path: String) -> String {
+        switch pathExtension(of: path) {
+        case "ipa", "tipa":
+            return "app.gift"
+        case "deb":
+            return "shippingbox.fill"
+        case "zip", "tar", "gz", "tgz", "xz", "bz2", "7z":
+            return "doc.zipper"
+        case "dylib":
+            return "gearshape"
+        default:
+            return "doc"
+        }
+    }
+
+    static func typeDisplayName(for path: String) -> String {
+        let ext = pathExtension(of: path)
+        if ext.isEmpty { return L10n.tr("Binary Or Encrypted") }
+        switch ext {
+        case "ipa": return "IPA"
+        case "tipa": return "TIPA"
+        case "deb": return "DEB"
+        default: return ext.uppercased()
+        }
+    }
 
     /// Resolve directory path for browsing.
     /// Critical on Dopamine rootless: `/var/jb` is a symlink to
@@ -131,6 +254,7 @@ enum FileTreeLoader {
                           let n = attrs?[.size] as? NSNumber else { return nil }
                     return n.uint64Value
                 }()
+                let modified = attrs?[.modificationDate] as? Date
 
                 nodes.append(FileNode(
                     id: full,
@@ -138,21 +262,19 @@ enum FileTreeLoader {
                     path: full,
                     isDirectory: isDirectory,
                     fileSize: size,
+                    modificationDate: modified,
                     isHidden: hidden
                 ))
             }
 
-            nodes.sort { a, b in
-                if a.isDirectory != b.isDirectory { return a.isDirectory && !b.isDirectory }
-                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
-            }
             return .listed(nodes)
         } catch {
             // Fallback: URL enumerator on resolved path.
             do {
                 let url = URL(fileURLWithPath: browsePath, isDirectory: true)
                 let keys: Set<URLResourceKey> = [
-                    .isDirectoryKey, .fileSizeKey, .isHiddenKey, .isSymbolicLinkKey, .nameKey
+                    .isDirectoryKey, .fileSizeKey, .isHiddenKey, .isSymbolicLinkKey,
+                    .nameKey, .contentModificationDateKey
                 ]
                 let urls = try fm.contentsOfDirectory(
                     at: url,
@@ -183,12 +305,9 @@ enum FileTreeLoader {
                         path: itemURL.path,
                         isDirectory: isDirectory,
                         fileSize: size,
+                        modificationDate: values?.contentModificationDate,
                         isHidden: hidden
                     ))
-                }
-                nodes.sort { a, b in
-                    if a.isDirectory != b.isDirectory { return a.isDirectory && !b.isDirectory }
-                    return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
                 }
                 return .listed(nodes)
             } catch {
@@ -199,10 +318,74 @@ enum FileTreeLoader {
     }
 
     static func isLikelyTextFile(path: String, size: UInt64?) -> Bool {
-        let ext = (path as NSString).pathExtension.lowercased()
+        let ext = pathExtension(of: path)
         if textExtensions.contains(ext) { return true }
         if ext.isEmpty, let size, size > 0, size <= 64 * 1024 { return true }
         return false
+    }
+
+    struct FileDetailMeta {
+        var exists: Bool
+        var size: UInt64?
+        var modified: Date?
+        var isReadable: Bool
+        var isWritable: Bool
+    }
+
+    static func loadDetailMeta(at path: String) -> FileDetailMeta {
+        let fm = FileManager.default
+        let exists = fm.fileExists(atPath: path)
+        let attrs = try? fm.attributesOfItem(atPath: path)
+        return FileDetailMeta(
+            exists: exists,
+            size: (attrs?[.size] as? NSNumber)?.uint64Value,
+            modified: attrs?[.modificationDate] as? Date,
+            isReadable: fm.isReadableFile(atPath: path),
+            isWritable: fm.isWritableFile(atPath: path)
+        )
+    }
+
+    /// Copy (or clone) into tmp so AirDrop / Notes / TrollStore can read the file.
+    /// Keeps the original filename so `.ipa` / `.deb` UTIs stay intact.
+    static func copyForSharing(path: String) -> Result<URL, Error> {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: path) else {
+            return .failure(fileError(1, L10n.tr("File Missing")))
+        }
+        let src = URL(fileURLWithPath: path)
+        let folder = fm.temporaryDirectory.appendingPathComponent(
+            "rescout-share-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        do {
+            try fm.createDirectory(at: folder, withIntermediateDirectories: true)
+            let dest = folder.appendingPathComponent(src.lastPathComponent)
+            do {
+                try fm.linkItem(at: src, to: dest)
+            } catch {
+                try fm.copyItem(at: src, to: dest)
+            }
+            ActivityLogStore.log(
+                .info,
+                category: L10n.tr("Log Category File"),
+                message: String(format: L10n.tr("Log File Shared Format"), path)
+            )
+            return .success(dest)
+        } catch {
+            try? fm.removeItem(at: folder)
+            ActivityLogStore.log(
+                .error,
+                category: L10n.tr("Log Category File"),
+                message: String(format: L10n.tr("Log File Failed Format"), path, error.localizedDescription)
+            )
+            return .failure(error)
+        }
+    }
+
+    static func removeShareStaging(around fileURL: URL) {
+        let folder = fileURL.deletingLastPathComponent()
+        guard folder.lastPathComponent.hasPrefix("rescout-share-") else { return }
+        try? FileManager.default.removeItem(at: folder)
     }
 
     static func isSensitivePath(_ path: String) -> Bool {

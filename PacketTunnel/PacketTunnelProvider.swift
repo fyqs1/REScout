@@ -5,6 +5,7 @@ import NetworkExtension
 /// status bar shows the VPN indicator while connected.
 final class PacketTunnelProvider: NEPacketTunnelProvider {
     private var reading = false
+    private var readPending = false
 
     override func startTunnel(
         options: [String: NSObject]?,
@@ -76,16 +77,19 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     private func startReadingPackets() {
-        guard !reading else { return }
         reading = true
-        readLoop()
+        pumpPackets()
     }
 
-    private func readLoop() {
-        guard reading else { return }
+    private func pumpPackets() {
+        guard reading, !readPending else { return }
+        readPending = true
         packetFlow.readPackets { [weak self] _, _ in
-            // Proxy-only tunnel: discard any packets aimed at 198.18.0.1.
-            self?.readLoop()
+            guard let self else { return }
+            self.readPending = false
+            if self.reading {
+                self.pumpPackets()
+            }
         }
     }
 }

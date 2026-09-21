@@ -5,7 +5,6 @@ struct ProfilePreviewView: View {
     let item: RECaseHistoryItem
     @State private var pack: [String: Any] = [:]
     @State private var toast: String?
-    @State private var sharePayload: SharePayload?
 
     private var identity: [String: Any] { pack["identity"] as? [String: Any] ?? [:] }
     private var macho: [String: Any] { pack["macho"] as? [String: Any] ?? [:] }
@@ -105,13 +104,17 @@ struct ProfilePreviewView: View {
                     Text(note).font(.footnote).foregroundStyle(.secondary)
                 }
             }
-
-            Section {
-                Button(L10n.tr("Cases Share JSON")) { share() }
-            }
         }
         .navigationTitle(item.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                ShareToolbarButton(accessibilityLabel: L10n.tr("Share File")) { anchor in
+                    share(from: anchor)
+                }
+                .frame(width: 36, height: 44)
+            }
+        }
         .overlay(alignment: .bottom) {
             if let toast {
                 Text(toast)
@@ -121,9 +124,6 @@ struct ProfilePreviewView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .padding(.bottom, 24)
             }
-        }
-        .sheet(item: $sharePayload) { payload in
-            ActivityView(activityItems: payload.items)
         }
         .onAppear(perform: load)
     }
@@ -161,13 +161,10 @@ struct ProfilePreviewView: View {
         }
     }
 
-    private func share() {
-        var items: [Any] = [RECaseHistoryStore.shared.fileURL(for: item)]
-        let readme = RECaseHistoryStore.shared.readmeURL(for: item)
-        if FileManager.default.fileExists(atPath: readme.path) {
-            items.append(readme)
-        }
-        sharePayload = SharePayload(items: items)
+    private func share(from sourceView: UIView) {
+        let json = RECaseHistoryStore.shared.fileURL(for: item)
+        guard FileManager.default.fileExists(atPath: json.path) else { return }
+        ShareSheetPresenter.presentFileURLs([json], from: sourceView)
     }
 
     private func copy(_ text: String, toast message: String) {
@@ -208,15 +205,3 @@ struct ProfilePreviewView: View {
     }
 }
 
-private struct SharePayload: Identifiable {
-    let id = UUID()
-    let items: [Any]
-}
-
-private struct ActivityView: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}

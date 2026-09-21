@@ -139,6 +139,7 @@
 "Log File Created Format" = "已创建 %@";
 "Log File Renamed Format" = "已重命名 %@ → %@";
 "Log File Deleted Format" = "已删除 %@";
+"Log File Shared Format" = "已投送 %@";
 "Log File Failed Format" = "失败 %@（%@）";
 "Public IP" = "公网 IP";
 "WiFi Down" = "Wi‑Fi 下载";
@@ -196,7 +197,8 @@
 "Open System Settings" = "打开系统设置";
 "Settings Cache" = "缓存";
 "Settings Tools" = "工具";
-"Full File Browser" = "全文件浏览器";
+"Full File Browser" = "文件浏览器";
+"File Browser" = "文件浏览器";
 "Full File Browser Intro" = "浏览设备文件系统，支持新建、重命名、编辑文本与删除。部分系统路径仍可能受保护。";
 "Browse Shortcuts" = "快捷入口";
 "Browse Root" = "根目录 (/)";
@@ -214,6 +216,21 @@
 "Show Hidden Files" = "显示隐藏文件";
 "Hide Hidden Files" = "不显示隐藏文件";
 "Item Count Format" = "%d 项";
+"File Sort" = "排序";
+"File Sort Name Asc" = "名称 A→Z";
+"File Sort Name Desc" = "名称 Z→A";
+"File Sort Date Newest" = "修改时间 新→旧";
+"File Sort Date Oldest" = "修改时间 旧→新";
+"File Sort Size Largest" = "大小 大→小";
+"File Sort Size Smallest" = "大小 小→大";
+"File Writable" = "可写";
+"On My iPhone" = "我的 iPhone";
+"On My iPhone Subtitle" = "文件 App → 我的 iPhone";
+"On My iPhone Missing" = "未找到 File Provider Storage";
+"Shortcut Root Subtitle" = "文件系统根目录";
+"Shortcut JB Mobile Subtitle" = "越狱用户目录";
+"Shortcut App Data Subtitle" = "应用数据容器";
+"Shortcut App Bundle Subtitle" = "应用安装包";
 "New Folder" = "新建文件夹";
 "New Text File" = "新建文本文件";
 "Create" = "创建";
@@ -240,7 +257,12 @@
 "Cache Cleared" = "缓存已清理";
 "Settings About" = "关于";
 "Settings Auto Refresh" = "自动刷新概览";
-"Settings Auto Refresh Footer" = "默认关闭，滑动更跟手。开启后约每 30 秒在概览页更新一次；也可随时点右上角刷新。";
+"Settings Auto Refresh Footer" = "默认关闭。可选择概览页可见时的刷新间隔；也可随时点右上角刷新。";
+"Refresh Interval Off" = "关闭";
+"Refresh Interval 5" = "5 秒";
+"Refresh Interval 10" = "10 秒";
+"Refresh Interval 30" = "30 秒";
+"Refresh Interval 60" = "60 秒";
 "Overview Manual Refresh Hint" = "点右上角刷新更新数据";
 "App Version" = "版本";
 
@@ -328,10 +350,20 @@
 "Enter Directory" = "进入目录";
 "Path Unavailable" = "路径不可用";
 "Open Text" = "打开";
+"Open File Detail" = "查看详情";
 "Binary Or Encrypted" = "二进制/非文本";
 "File Missing" = "文件不存在";
 "File Too Large" = "文件过大（>2MB）";
 "File Not Text" = "不是文本文件";
+"File Detail" = "文件详情";
+"File Size" = "大小";
+"File Type" = "类型";
+"File Modified" = "修改时间";
+"File Readable" = "可读";
+"Share File" = "投送";
+"Share File Footer" = "通过系统分享打开：隔空投送、备忘录、巨魔、Filza 等已安装且支持该类型的应用。";
+"Sharing File" = "正在准备投送…";
+"Share File Failed" = "无法投送此文件";
 
 "Role User" = "用户";
 "Role System" = "系统";
@@ -401,8 +433,10 @@
 "Proxy VPN Status" = "VPN";
 "Proxy VPN Connect" = "连接 VPN 代理";
 "Proxy VPN Disconnect" = "断开";
-"Proxy VPN Connect OK" = "已请求连接 VPN 代理。如有系统弹窗请点允许。";
-"Proxy VPN Disconnect OK" = "已请求断开 VPN 代理。";
+"Proxy VPN Connect OK" = "VPN 代理已连接。";
+"Proxy VPN Disconnect OK" = "VPN 代理已断开。";
+"Proxy VPN Connect Timeout" = "VPN 代理未能完成连接。请先断开再试。";
+"Proxy VPN Connect Failed" = "VPN 代理连接失败。";
 "Proxy VPN Invalid" = "未配置";
 "Proxy VPN Disconnected" = "未连接";
 "Proxy VPN Connecting" = "连接中…";

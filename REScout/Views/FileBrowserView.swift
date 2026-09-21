@@ -1,10 +1,18 @@
 import SwiftUI
+import UIKit
 
 /// One-folder-per-screen browser. Supports list / create / rename / delete when `allowsMutation` is true.
 struct FileBrowserView: View {
     let rootTitle: String
     let rootPath: String
     var allowsMutation: Bool = true
+
+    private enum NameEditorKind: String, Identifiable {
+        case rename
+        case newFolder
+        case newFile
+        var id: String { rawValue }
+    }
 
     @State private var browsePath: String = ""
     @State private var nodes: [FileNode] = []
@@ -13,18 +21,17 @@ struct FileBrowserView: View {
     @State private var emptyHint: String?
     @State private var toast: String?
     @State private var showHidden = true
+    @State private var sortMode: FileSortMode = FileSortMode.stored
     @State private var loadToken = UUID()
 
     @State private var pendingDelete: FileNode?
     @State private var showDeleteConfirm = false
     @State private var renameTarget: FileNode?
-    @State private var renameText = ""
-    @State private var showRename = false
-    @State private var showNewFolder = false
-    @State private var showNewFile = false
-    @State private var newNameText = ""
+    @State private var editorText = ""
+    @State private var nameEditor: NameEditorKind?
     @State private var actionError: String?
     @State private var showActionError = false
+    @State private var preparingShare = false
 
     private var activePath: String {
         browsePath.isEmpty ? rootPath : browsePath
@@ -93,17 +100,33 @@ struct FileBrowserView: View {
                             systemImage: showHidden ? "eye.slash" : "eye"
                         )
                     }
+                    Menu {
+                        ForEach(FileSortMode.allCases) { mode in
+                            Button {
+                                applySort(mode)
+                            } label: {
+                                HStack {
+                                    Text(L10n.tr(mode.titleKey))
+                                    if sortMode == mode {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Label(L10n.tr("File Sort"), systemImage: "arrow.up.arrow.down")
+                    }
                     if allowsMutation {
                         Divider()
                         Button {
-                            newNameText = ""
-                            showNewFolder = true
+                            editorText = ""
+                            nameEditor = .newFolder
                         } label: {
                             Label(L10n.tr("New Folder"), systemImage: "folder.badge.plus")
                         }
                         Button {
-                            newNameText = "untitled.txt"
-                            showNewFile = true
+                            editorText = "untitled.txt"
+                            nameEditor = .newFile
                         } label: {
                             Label(L10n.tr("New Text File"), systemImage: "doc.badge.plus")
                         }
@@ -128,6 +151,17 @@ struct FileBrowserView: View {
                     .padding(.bottom, 20)
             }
         }
+        .overlay {
+            if preparingShare {
+                ZStack {
+                    Color.black.opacity(0.12).ignoresSafeArea()
+                    ProgressView(L10n.tr("Sharing File"))
+                        .padding(16)
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
+        }
         .alert(L10n.tr("Confirm Delete Title"), isPresented: $showDeleteConfirm, presenting: pendingDelete) { node in
             Button(L10n.tr("Cancel"), role: .cancel) {}
             Button(L10n.tr("Delete"), role: .destructive) {
@@ -136,23 +170,6 @@ struct FileBrowserView: View {
         } message: { node in
             Text(deleteMessage(for: node))
         }
-        .alert(L10n.tr("Rename"), isPresented: $showRename) {
-            TextField(L10n.tr("File Name"), text: $renameText)
-            Button(L10n.tr("Cancel"), role: .cancel) {}
-            Button(L10n.tr("Save")) { performRename() }
-        } message: {
-            Text(renameTarget?.path ?? "")
-        }
-        .alert(L10n.tr("New Folder"), isPresented: $showNewFolder) {
-            TextField(L10n.tr("File Name"), text: $newNameText)
-            Button(L10n.tr("Cancel"), role: .cancel) {}
-            Button(L10n.tr("Create")) { performCreateFolder() }
-        }
-        .alert(L10n.tr("New Text File"), isPresented: $showNewFile) {
-            TextField(L10n.tr("File Name"), text: $newNameText)
-            Button(L10n.tr("Cancel"), role: .cancel) {}
-            Button(L10n.tr("Create")) { performCreateFile() }
-        }
         .alert(L10n.tr("Operation Failed"), isPresented: $showActionError) {
             Button(L10n.tr("OK"), role: .cancel) {
                 showActionError = false
@@ -160,6 +177,25 @@ struct FileBrowserView: View {
             }
         } message: {
             Text(actionError ?? "")
+        }
+        .sheet(item: $nameEditor) { kind in
+            NameEditorSheet(
+                title: nameEditorTitle(kind),
+                confirmTitle: kind == .rename ? L10n.tr("Save") : L10n.tr("Create"),
+                placeholder: L10n.tr("File Name"),
+                footnote: kind == .rename ? renameTarget?.path : nil,
+                text: $editorText,
+                onCancel: { nameEditor = nil },
+                onConfirm: {
+                    let kindCopy = kind
+                    nameEditor = nil
+                    switch kindCopy {
+                    case .rename: performRename()
+                    case .newFolder: performCreateFolder()
+                    case .newFile: performCreateFile()
+                    }
+                }
+            )
         }
         .onAppear { load() }
         .onChange(of: showHidden) { _ in load() }
@@ -257,10 +293,30 @@ struct FileBrowserView: View {
                     rowLabel(node, systemImage: "doc.text", tint: false, detail: L10n.tr("Open Text"))
                 }
             } else {
-                rowLabel(node, systemImage: "doc", tint: false, detail: L10n.tr("Binary Or Encrypted"))
+                let packaged = FileTreeLoader.isPackageFile(node.path)
+                NavigationLink {
+                    FileDetailView(path: node.path, name: node.name, fileSize: node.fileSize)
+                } label: {
+                    rowLabel(
+                        node,
+                        systemImage: FileTreeLoader.systemImage(for: node.path),
+                        tint: packaged,
+                        detail: L10n.tr("Open File Detail")
+                    )
+                }
             }
         }
         .contextMenu { contextMenu(for: node) }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            if !node.isDirectory {
+                Button {
+                    shareFile(at: node.path)
+                } label: {
+                    Label(L10n.tr("Share File"), systemImage: "square.and.arrow.up")
+                }
+                .tint(.blue)
+            }
+        }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if allowsMutation {
                 Button(role: .destructive) {
@@ -271,8 +327,8 @@ struct FileBrowserView: View {
                 }
                 Button {
                     renameTarget = node
-                    renameText = node.name
-                    showRename = true
+                    editorText = node.name
+                    nameEditor = .rename
                 } label: {
                     Label(L10n.tr("Rename"), systemImage: "pencil")
                 }
@@ -294,11 +350,18 @@ struct FileBrowserView: View {
         } label: {
             Label(L10n.tr("Tap To Copy Path"), systemImage: "doc.on.doc")
         }
+        if !node.isDirectory {
+            Button {
+                shareFile(at: node.path)
+            } label: {
+                Label(L10n.tr("Share File"), systemImage: "square.and.arrow.up")
+            }
+        }
         if allowsMutation {
             Button {
                 renameTarget = node
-                renameText = node.name
-                showRename = true
+                editorText = node.name
+                nameEditor = .rename
             } label: {
                 Label(L10n.tr("Rename"), systemImage: "pencil")
             }
@@ -362,7 +425,9 @@ struct FileBrowserView: View {
                 isLoading = false
                 switch outcome {
                 case .listed(let listed):
-                    nodes = listed
+                    var sorted = listed
+                    FileSortMode.sort(&sorted, mode: sortMode)
+                    nodes = sorted
                     if listed.isEmpty {
                         emptyHint = L10n.tr("Folder Empty")
                     }
@@ -377,11 +442,41 @@ struct FileBrowserView: View {
         }
     }
 
+    private func applySort(_ mode: FileSortMode) {
+        sortMode = mode
+        FileSortMode.stored = mode
+        var sorted = nodes
+        FileSortMode.sort(&sorted, mode: mode)
+        nodes = sorted
+    }
+
+    private func nameEditorTitle(_ kind: NameEditorKind) -> String {
+        switch kind {
+        case .rename: return L10n.tr("Rename")
+        case .newFolder: return L10n.tr("New Folder")
+        case .newFile: return L10n.tr("New Text File")
+        }
+    }
+
     private func copyPath(_ path: String) {
         UIPasteboard.general.string = path
         withAnimation { toast = L10n.tr("Path Copied") }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             withAnimation { toast = nil }
+        }
+    }
+
+    private func shareFile(at path: String) {
+        FileShareCoordinator.prepare(path: path) { preparingShare = $0 } completion: { result in
+            switch result {
+            case .success(let payload):
+                ShareSheetPresenter.present(items: payload.items, from: nil) {
+                    payload.cleanup()
+                }
+            case .failure(let error):
+                actionError = error.localizedDescription
+                showActionError = true
+            }
         }
     }
 
@@ -411,7 +506,7 @@ struct FileBrowserView: View {
 
     private func performRename() {
         guard let target = renameTarget else { return }
-        let name = renameText
+        let name = editorText
         FileTreeLoader.ioQueue.async {
             let result = FileTreeLoader.renameItem(at: target.path, to: name)
             DispatchQueue.main.async {
@@ -428,7 +523,7 @@ struct FileBrowserView: View {
     }
 
     private func performCreateFolder() {
-        let name = newNameText
+        let name = editorText
         let parent = activePath
         FileTreeLoader.ioQueue.async {
             let result = FileTreeLoader.createDirectory(named: name, in: parent)
@@ -446,7 +541,7 @@ struct FileBrowserView: View {
     }
 
     private func performCreateFile() {
-        let name = newNameText
+        let name = editorText
         let parent = activePath
         FileTreeLoader.ioQueue.async {
             let result = FileTreeLoader.createTextFile(named: name, in: parent)
@@ -461,5 +556,48 @@ struct FileBrowserView: View {
                 }
             }
         }
+    }
+}
+
+private struct NameEditorSheet: View {
+    let title: String
+    let confirmTitle: String
+    let placeholder: String
+    var footnote: String?
+    @Binding var text: String
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    private var canConfirm: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section {
+                    TextField(placeholder, text: $text)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                } footer: {
+                    if let footnote, !footnote.isEmpty {
+                        Text(footnote)
+                            .font(.caption.monospaced())
+                    }
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L10n.tr("Cancel"), action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(confirmTitle, action: onConfirm)
+                        .disabled(!canConfirm)
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
     }
 }

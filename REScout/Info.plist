@@ -41,6 +41,25 @@
 	<string>Only used to show photo library permission status in Settings.</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Used only to display advertising identifier status. No ads are shown.</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.fyqs.REScout.fileBrowser</string>
+	</array>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<true/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

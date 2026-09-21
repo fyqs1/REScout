@@ -48,12 +48,21 @@ struct SettingsView: View {
                     NavigationLink {
                         FullFileBrowserHubView()
                     } label: {
-                        Label(L10n.tr("Full File Browser"), systemImage: "folder")
+                        Label(L10n.tr("File Browser"), systemImage: "folder")
                     }
                 }
 
                 Section {
-                    Toggle(L10n.tr("Settings Auto Refresh"), isOn: $settings.autoRefreshOverview)
+                    NavigationLink {
+                        AutoRefreshSettingsView()
+                    } label: {
+                        HStack {
+                            Text(L10n.tr("Settings Auto Refresh"))
+                            Spacer()
+                            Text(L10n.tr(settings.overviewRefreshInterval.titleKey))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 } footer: {
                     Text(L10n.tr("Settings Auto Refresh Footer"))
                 }
@@ -128,6 +137,31 @@ struct LanguageSettingsView: View {
             }
         }
         .navigationTitle(L10n.tr("Settings Language"))
+        .navigationBarTitleDisplayMode(.inline)
+        .id(settings.localizationEpoch)
+    }
+}
+
+struct AutoRefreshSettingsView: View {
+    @EnvironmentObject private var settings: AppSettingsStore
+
+    var body: some View {
+        List {
+            ForEach(Array(OverviewRefreshInterval.allCases), id: \.rawValue) { interval in
+                Button {
+                    settings.overviewRefreshInterval = interval
+                } label: {
+                    HStack {
+                        Text(L10n.tr(interval.titleKey)).foregroundStyle(.primary)
+                        Spacer()
+                        if settings.overviewRefreshInterval == interval {
+                            Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle(L10n.tr("Settings Auto Refresh"))
         .navigationBarTitleDisplayMode(.inline)
         .id(settings.localizationEpoch)
     }

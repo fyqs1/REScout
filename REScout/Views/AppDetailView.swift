@@ -7,7 +7,6 @@ struct AppDetailView: View {
     @State private var profile = AppStorageProfile()
     @State private var re = AppREProfile()
     @State private var loading = true
-    @State private var sharePayload: SharePayload?
 
     private var bundleRoot: String {
         profile.bundleContainerPath.isEmpty ? app.bundleContainerPath : profile.bundleContainerPath
@@ -195,9 +194,6 @@ struct AppDetailView: View {
         .overlay {
             if loading { ProgressView() }
         }
-        .sheet(item: $sharePayload) { payload in
-            ActivityView(activityItems: payload.items)
-        }
         .onAppear(perform: enrich)
     }
 
@@ -277,15 +273,11 @@ struct AppDetailView: View {
         let pack = RECaseExporter.makeNeutralPack(app: app, storage: profile, re: re)
         do {
             let data = try RECaseExporter.jsonData(from: pack)
-            let readme = RECaseExporter.readmeText(from: pack)
             _ = RECaseHistoryStore.shared.save(app: app, re: re, pack: pack, jsonData: data)
             let safe = app.bundleID.replacingOccurrences(of: "/", with: "_")
-            let dir = FileManager.default.temporaryDirectory
-            let jsonURL = dir.appendingPathComponent("REScout-\(safe).json")
-            let txtURL = dir.appendingPathComponent("REScout-\(safe).txt")
+            let jsonURL = FileManager.default.temporaryDirectory.appendingPathComponent("REScout-\(safe).json")
             try data.write(to: jsonURL, options: .atomic)
-            try readme.write(to: txtURL, atomically: true, encoding: .utf8)
-            sharePayload = SharePayload(items: [jsonURL, txtURL])
+            ShareSheetPresenter.presentFileURLs([jsonURL], from: nil)
             ActivityLogStore.shared.append(
                 level: .info,
                 category: L10n.tr("Log Category RE"),
@@ -497,17 +489,3 @@ struct AppDetailMoreView: View {
     }
 }
 
-private struct SharePayload: Identifiable {
-    let id = UUID()
-    let items: [Any]
-}
-
-private struct ActivityView: UIViewControllerRepresentable {
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}

@@ -139,6 +139,7 @@
 "Log File Created Format" = "Created %@";
 "Log File Renamed Format" = "Renamed %@ → %@";
 "Log File Deleted Format" = "Deleted %@";
+"Log File Shared Format" = "Shared %@";
 "Log File Failed Format" = "Failed %@ (%@)";
 "Public IP" = "Public IP";
 "WiFi Down" = "Wi‑Fi Down";
@@ -196,7 +197,8 @@
 "Open System Settings" = "Open System Settings";
 "Settings Cache" = "Cache";
 "Settings Tools" = "Tools";
-"Full File Browser" = "Full File Browser";
+"Full File Browser" = "File Browser";
+"File Browser" = "File Browser";
 "Full File Browser Intro" = "Browse the device filesystem. Create, rename, edit text, and delete. Some system paths may still be protected.";
 "Browse Shortcuts" = "Shortcuts";
 "Browse Root" = "Root (/)";
@@ -214,6 +216,21 @@
 "Show Hidden Files" = "Show Hidden Files";
 "Hide Hidden Files" = "Hide Hidden Files";
 "Item Count Format" = "%d items";
+"File Sort" = "Sort";
+"File Sort Name Asc" = "Name A→Z";
+"File Sort Name Desc" = "Name Z→A";
+"File Sort Date Newest" = "Date · Newest";
+"File Sort Date Oldest" = "Date · Oldest";
+"File Sort Size Largest" = "Size · Largest";
+"File Sort Size Smallest" = "Size · Smallest";
+"File Writable" = "Writable";
+"On My iPhone" = "On My iPhone";
+"On My iPhone Subtitle" = "Files → On My iPhone";
+"On My iPhone Missing" = "File Provider Storage not found";
+"Shortcut Root Subtitle" = "Filesystem root";
+"Shortcut JB Mobile Subtitle" = "Jailbreak user home";
+"Shortcut App Data Subtitle" = "Application data containers";
+"Shortcut App Bundle Subtitle" = "Installed app bundles";
 "New Folder" = "New Folder";
 "New Text File" = "New Text File";
 "Create" = "Create";
@@ -240,7 +257,12 @@
 "Cache Cleared" = "Cache cleared";
 "Settings About" = "About";
 "Settings Auto Refresh" = "Auto-refresh Overview";
-"Settings Auto Refresh Footer" = "Off by default for smoother scrolling. When on, updates about every 30 seconds while Overview is visible. You can always tap Refresh.";
+"Settings Auto Refresh Footer" = "Off by default. Choose how often Overview updates while it is visible. You can always tap Refresh.";
+"Refresh Interval Off" = "Off";
+"Refresh Interval 5" = "5 seconds";
+"Refresh Interval 10" = "10 seconds";
+"Refresh Interval 30" = "30 seconds";
+"Refresh Interval 60" = "60 seconds";
 "Overview Manual Refresh Hint" = "Tap Refresh (top right) to update";
 "App Version" = "Version";
 
@@ -328,10 +350,20 @@
 "Enter Directory" = "Open folder";
 "Path Unavailable" = "Path unavailable";
 "Open Text" = "Open";
+"Open File Detail" = "Details";
 "Binary Or Encrypted" = "Binary / non-text";
 "File Missing" = "File missing";
 "File Too Large" = "File too large (>2MB)";
 "File Not Text" = "Not a text file";
+"File Detail" = "File";
+"File Size" = "Size";
+"File Type" = "Type";
+"File Modified" = "Modified";
+"File Readable" = "Readable";
+"Share File" = "Share";
+"Share File Footer" = "Opens the system share sheet so AirDrop, Notes, TrollStore, Filza, and other installed apps can open this file.";
+"Sharing File" = "Preparing to share…";
+"Share File Failed" = "Unable to share this file";
 
 "Role User" = "User";
 "Role System" = "System";
@@ -401,8 +433,10 @@
 "Proxy VPN Status" = "VPN";
 "Proxy VPN Connect" = "Connect VPN Proxy";
 "Proxy VPN Disconnect" = "Disconnect";
-"Proxy VPN Connect OK" = "VPN proxy connect requested. Allow the system prompt if shown.";
-"Proxy VPN Disconnect OK" = "VPN proxy disconnect requested.";
+"Proxy VPN Connect OK" = "VPN proxy connected.";
+"Proxy VPN Disconnect OK" = "VPN proxy disconnected.";
+"Proxy VPN Connect Timeout" = "VPN proxy did not finish connecting. Disconnect and try again.";
+"Proxy VPN Connect Failed" = "VPN proxy failed to connect.";
 "Proxy VPN Invalid" = "Not configured";
 "Proxy VPN Disconnected" = "Disconnected";
 "Proxy VPN Connecting" = "Connecting…";

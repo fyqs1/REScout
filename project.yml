@@ -96,6 +96,13 @@ targets:
           - filza
           - undecimus
           - activator
+        NSUserActivityTypes:
+          - com.fyqs.REScout.fileBrowser
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

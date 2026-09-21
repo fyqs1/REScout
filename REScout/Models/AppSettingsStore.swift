@@ -67,6 +67,30 @@ enum OverviewSectionID: String, CaseIterable, Identifiable, Codable {
     static var defaultOrder: [OverviewSectionID] { Array(allCases) }
 }
 
+enum OverviewRefreshInterval: Int, CaseIterable, Identifiable {
+    case off = 0
+    case five = 5
+    case ten = 10
+    case thirty = 30
+    case sixty = 60
+
+    var id: Int { rawValue }
+
+    var timeInterval: TimeInterval? {
+        rawValue == 0 ? nil : TimeInterval(rawValue)
+    }
+
+    var titleKey: String {
+        switch self {
+        case .off: return "Refresh Interval Off"
+        case .five: return "Refresh Interval 5"
+        case .ten: return "Refresh Interval 10"
+        case .thirty: return "Refresh Interval 30"
+        case .sixty: return "Refresh Interval 60"
+        }
+    }
+}
+
 @MainActor
 final class AppSettingsStore: ObservableObject {
     static let shared = AppSettingsStore()
@@ -79,10 +103,12 @@ final class AppSettingsStore: ObservableObject {
         didSet { UserDefaults.standard.set(showSystemApps, forKey: Keys.showSystemApps) }
     }
 
-    /// When false (default), overview only refreshes on open / manual pull.
-    @Published var autoRefreshOverview: Bool {
-        didSet { UserDefaults.standard.set(autoRefreshOverview, forKey: Keys.autoRefreshOverview) }
+    /// When `.off` (default), overview only refreshes on open / manual pull.
+    @Published var overviewRefreshInterval: OverviewRefreshInterval {
+        didSet { UserDefaults.standard.set(overviewRefreshInterval.rawValue, forKey: Keys.overviewRefreshInterval) }
     }
+
+    var autoRefreshOverview: Bool { overviewRefreshInterval != .off }
 
     @Published var overviewOrder: [OverviewSectionID] {
         didSet {
@@ -99,17 +125,21 @@ final class AppSettingsStore: ObservableObject {
         static let showSystemApps = "settings.showSystemApps"
         static let overviewOrder = "settings.overviewOrder"
         static let autoRefreshOverview = "settings.autoRefreshOverview"
+        static let overviewRefreshInterval = "settings.overviewRefreshInterval"
     }
 
     private init() {
         let raw = UserDefaults.standard.string(forKey: Keys.language) ?? AppLanguage.system.rawValue
         language = AppLanguage(rawValue: raw) ?? .system
         showSystemApps = UserDefaults.standard.object(forKey: Keys.showSystemApps) as? Bool ?? false
-        // Default: manual refresh for smoother scrolling.
-        if UserDefaults.standard.object(forKey: Keys.autoRefreshOverview) == nil {
-            autoRefreshOverview = false
+        if let stored = UserDefaults.standard.object(forKey: Keys.overviewRefreshInterval) as? Int,
+           let interval = OverviewRefreshInterval(rawValue: stored) {
+            overviewRefreshInterval = interval
+        } else if UserDefaults.standard.object(forKey: Keys.autoRefreshOverview) != nil,
+                  UserDefaults.standard.bool(forKey: Keys.autoRefreshOverview) {
+            overviewRefreshInterval = .thirty
         } else {
-            autoRefreshOverview = UserDefaults.standard.bool(forKey: Keys.autoRefreshOverview)
+            overviewRefreshInterval = .off
         }
         overviewOrder = Self.loadOrder()
     }
